@@ -431,7 +431,7 @@ def setup():
         try:
             resolver.nameservers = open(args.resolver_list, 'r').read().splitlines()
         except FileNotFoundError:
-            out.fatal("Не удалось открыть файл, содержащий распознаватели: " + args.resolver_list)
+            out.fatal("Не удалось открыть файл, содержащий ресолверы: " + args.resolver_list)
             sys.exit(1)
     elif args.resolvers:
         resolver.nameservers = args.resolvers.split(",")
@@ -460,7 +460,7 @@ if __name__ == "__main__":
             out.warn("Не удалось разрешить '.' - возможно, сервер работает неправильно. Все равно продолжаем....")
             pass
         except:
-            out.fatal("Не работает распознаватель DNS. Это может произойти, если сервер разрешает только внутренние зоны")
+            out.fatal("Не работает ресолвер DNS. Это может произойти, если сервер разрешает только внутренние зоны")
             out.fatal("Установите пользовательский преобразователь с помощью -R <преобразователь>")
             out.fatal("Проигнорируйте это предупреждение с помощью -n -nocheck\n")
             sys.exit(1)
@@ -481,11 +481,11 @@ if __name__ == "__main__":
         target = subtarget
         out.status("Область обработки {}".format(target))
         if args.resolver_list:
-            out.status("Использование распознавателей из: {}".format(args.resolver_list))
+            out.status("Использование DNS ресолверов из: {}".format(args.resolver_list))
         elif args.resolvers:
             out.status("Использование указанных преобразователей: {}".format(args.resolvers))
         else:
-            out.status("Использование системных распознавателей: {}".format(",".join(resolver.nameservers)))
+            out.status("Использование системных DNS ресолверов: {}".format(",".join(resolver.nameservers)))
         if args.tld and not '%%' in target:
             if "." in target:
                 out.warn("Внимание: сканирование TLD лучше всего работает только с корневым доменом")
