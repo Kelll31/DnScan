@@ -197,7 +197,7 @@ def get_wildcard(target, recordtype='A'):
             wildcards.append(address)
             print(f"Найден домен с подстановочным знаком - *.{target} ({address})")
     except dns.resolver.NoAnswer:
-        print("Не найден домен с подстановочным знаком")
+        print(f"Не найден домен с подстановочным знаком")
     except dns.resolver.NXDOMAIN:
         print(f"Домен не существует")
     except Exception as e:
