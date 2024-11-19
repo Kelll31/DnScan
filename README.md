@@ -10,7 +10,7 @@ SubScanPy - это сканер поддоменов DNS на основе сп�
 Usage
 -----
 
-SubScanPy.py (-d \<domain\> | -l \<list\>) [OPTIONS]
+$ SubScanPy.py (-d \<domain\> | -l \<list\>) [OPTIONS]
 
 #### Обязательные аргументы
     -d  --domain                              Целевой домен; ИЛИ
