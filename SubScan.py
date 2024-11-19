@@ -47,7 +47,7 @@ except:
     sys.exit(1)
 
 if (packaging.version.parse(dns.__version__) < packaging.version.Version("2.0.0")):
-    print("для работы с dns can требуется dnspython версии 2.0.0 или выше.\ Вы можете установить его с помощью `pip install -r requirements.txt`")
+    print("для работы с SubScanPy требуется dnspython версии 2.0.0 или выше.\ Вы можете установить его с помощью `pip install -r requirements.txt`")
     sys.exit(1)
 
 # Использование: SubScan.py -d <доменное имя>
@@ -217,7 +217,7 @@ def get_v6(target):
     try:
         res = lookup(target, "AAAA")
         if res:
-            out.good("Найдены записи IPv6 (AAAA). Попробуйте запустить dns can с помощью "+ col.green + "-6 " + col.end + " опции.")
+            out.good("Найдены записи IPv6 (AAAA). Попробуйте запустить SubScanPy с помощью "+ col.green + "-6 " + col.end + " опции.")
         for v6 in res:
             print(str(v6) + "\n")
             if outfile:
