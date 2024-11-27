@@ -9983,3 +9983,14 @@ t7
 thot
 wien
 uat-online
+srv-mx-01
+srv-mx-02
+srv-mx-03
+srv-mx-04
+srv-mx-05
+srv-mx-06
+srv-mx-07
+srv-mx-08
+srv-mx-09
+srv-mx-10
+srv-mx-11
