@@ -1,5 +1,5 @@
 
-[Banner]: https://github.com/Kelll31/SubScanPy/blob/main/img/usage.png?raw=true "We will conquer the earth!!"
+[Banner]: https://github.com/Kelll31/SubScanPy/blob/main/img/usage.png?raw=true "Usage example"
 
 SubScanPy
 ======
