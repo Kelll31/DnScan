@@ -1,3 +1,6 @@
+
+[Banner]: https://github.com/Kelll31/SubScanPy/blob/main/img/usage.png?raw=true "We will conquer the earth!!"
+
 SubScanPy
 ======
 
@@ -9,6 +12,8 @@ SubScanPy - это сканер поддоменов DNS на основе сп�
 
 Usage
 -----
+
+![Banner]
 
 $ SubScanPy.py (-d \<domain\> | -l \<list\>) [OPTIONS]
 
