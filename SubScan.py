@@ -9,6 +9,8 @@ import re
 import sys
 import threading
 import time
+import itertools
+import string
 
 try:    # Уродливый взлом, потому что Python3 решил переименовать Queue в queue очередь
     import Queue
@@ -53,72 +55,73 @@ if (packaging.version.parse(dns.__version__) < packaging.version.Version("2.0.0"
 # Использование: SubScan.py -d <доменное имя>
 
 class scanner(threading.Thread):
-    def __init__(self, queue):
+    def __init__(self, queue, stop_event):
         global wildcard
         threading.Thread.__init__(self)
         self.queue = queue
+        self.stop_event = stop_event
 
     def get_name(self, domain):
-            global wildcard, addresses
-            try:
-                if sys.stdout.isatty():     # Не отправляйте спам-рассылку при перенаправлении
-                    print(domain + '\033[K\r', end='')
+        global wildcard, addresses
+        try:
+            if sys.stdout.isatty():     # Не отправляйте спам-рассылку при перенаправлении
+                print(domain + '\033[K\r', end='')
 
-                res = lookup(domain, recordtype)
-                if args.tld and res:
-                    nameservers = sorted(list(res))
-                    ns0 = str(nameservers[0])[:-1]  # Первый сервер имен
+            res = lookup(domain, recordtype)
+            if args.tld and res:
+                nameservers = sorted(list(res))
+                ns0 = str(nameservers[0])[:-1]  # Первый сервер имен
+                print('\033[K\r', end='')
+                print(domain + " - " + col.brown + ns0 + col.end)
+                if outfile:
+                    print(ns0 + " - " + domain, file=outfile)
+            if args.tld:
+                if res:
                     print('\033[K\r', end='')
-                    print(domain + " - " + col.brown + ns0 + col.end)
-                    if outfile:
-                        print(ns0 + " - " + domain, file=outfile)
-                if args.tld:
-                    if res:
-                        print('\033[K\r', end='')
-                        print(domain + " - " + res)
-                    return
-                for rdata in res:
-                    address = rdata.address
-                    if wildcard:
-                        for wildcard_ip in wildcard:
-                            if address == wildcard_ip:
-                                return
-                    print('\033[K\r', end='')
-                    if args.no_ip:
-                        print(col.brown + domain + col.end)
-                        break
-                    elif args.domain_first:
-                        print(domain + " - " + col.brown + address + col.end)
-                    else:
-                        print(address + " - " + col.brown + domain + col.end)
-                    if outfile:
-                        if args.domain_first:
-                            print(domain + " - " + address, file=outfile)
-                        else:
-                            print(address + " - " + domain, file=outfile)
-                    try:
-                        addresses.add(ipaddr(unicode(address)))
-                    except NameError:
-                        addresses.add(ipaddr(str(address)))
-
-                if ( domain != target and \
-                     args.recurse and \
-                     domain.count('.') - target.count('.') <= args.maxdepth
-                     ):
-                    # Проверяем, является ли поддомен подстановочным знаком, чтобы можно было отфильтровать ложные срабатывания при рекурсивном сканировании
-                    wildcard = get_wildcard(domain)
+                    print(domain + " - " + res)
+                return
+            for rdata in res:
+                address = rdata.address
+                if wildcard:
                     for wildcard_ip in wildcard:
-                        try:
-                            addresses.add(ipaddr(unicode(wildcard_ip)))
-                        except NameError:
-                            addresses.add(ipaddr(str(wildcard_ip)))
-                    if args.recurse_wildcards or not wildcard:
-                        add_target(domain)  # Рекурсивное сканирование поддоменов
-            except:
-                pass
+                        if address == wildcard_ip:
+                            return
+                print('\033[K\r', end='')
+                if args.no_ip:
+                    print(col.brown + domain + col.end)
+                    break
+                elif args.domain_first:
+                    print(domain + " - " + col.brown + address + col.end)
+                else:
+                    print(address + " - " + col.brown + domain + col.end)
+                if outfile:
+                    if args.domain_first:
+                        print(domain + " - " + address, file=outfile)
+                    else:
+                        print(address + " - " + domain, file=outfile)
+                try:
+                    addresses.add(ipaddr(unicode(address)))
+                except NameError:
+                    addresses.add(ipaddr(str(address)))
+
+            if ( domain != target and \
+                 args.recurse and \
+                 domain.count('.') - target.count('.') <= args.maxdepth
+                 ):
+                # Проверяем, является ли поддомен подстановочным знаком, чтобы можно было отфильтровать ложные срабатывания при рекурсивном сканировании
+                wildcard = get_wildcard(domain)
+                for wildcard_ip in wildcard:
+                    try:
+                        addresses.add(ipaddr(unicode(wildcard_ip)))
+                    except NameError:
+                        addresses.add(ipaddr(str(wildcard_ip)))
+                if args.recurse_wildcards or not wildcard:
+                    add_target(domain)  # Рекурсивное сканирование поддоменов
+        except:
+            pass
 
     def run(self):
-        while True:
+        while not self.stop_event.is_set():
             try:
                 domain = self.queue.get(timeout=1)
             except:
@@ -332,32 +335,50 @@ def zone_transfer(domain, ns, nsip):
     except Exception:
         pass
 
+def generate_subdomains(length):
+    if '-' in length:
+        min_len, max_len = map(int, length.split('-'))
+    else:
+        min_len = 1
+        max_len = int(length)
+
+    characters = string.ascii_lowercase + string.digits
+
+    for sub_len in range(min_len, max_len + 1):
+        for subdomain_tuple in itertools.product(characters, repeat=sub_len):
+            yield ''.join(subdomain_tuple)
+
 def add_target(domain):
-    for word in wordlist:
-        patterns = [word]
-        if args.alt:
-            probes = ["dev", "prod", "stg", "qa", "uat", "api", "alpha", "beta",
-                      "cms", "test", "internal", "staging", "origin", "stage"]
-            for probe in probes:
-                if probe not in word: # Сократите изменения, которых, скорее всего, не существует (например, dev-dev.domain.com)
-                    patterns.append(probe + word)
-                    patterns.append(word + probe)
-                    patterns.append(probe + "-" + word)
-                    patterns.append(word + "-" + probe)
-            if not word[-1].isdigit(): # Если у поддомена уже был номер в качестве суффикса
-                for n in range(1, 6):
-                    patterns.append(word + str(n))
-                    patterns.append(word + "0" + str(n))
-        for pattern in patterns:
-            if '%%' in domain:
-                queue.put(domain.replace(r'%%', pattern))
-            else:
-                queue.put(pattern + "." + domain)
+    if args.bruteforce:
+        subdomains = generate_subdomains(args.bruteforce)
+        for subdomain in subdomains:
+            queue.put(subdomain + "." + domain)
+    else:
+        for word in wordlist:
+            patterns = [word]
+            if args.alt:
+                probes = ["dev", "prod", "stg", "qa", "uat", "api", "alpha", "beta",
+                          "cms", "test", "internal", "staging", "origin", "stage"]
+                for probe in probes:
+                    if probe not in word: # Сократите изменения, которых, скорее всего, не существует (например, dev-dev.domain.com)
+                        patterns.append(probe + word)
+                        patterns.append(word + probe)
+                        patterns.append(probe + "-" + word)
+                        patterns.append(word + "-" + probe)
+                if not word[-1].isdigit(): # Если у поддомена уже был номер в качестве суффикса
+                    for n in range(1, 6):
+                        patterns.append(word + str(n))
+                        patterns.append(word + "0" + str(n))
+            for pattern in patterns:
+                if '%%' in domain:
+                    queue.put(domain.replace(r'%%', pattern))
+                else:
+                    queue.put(pattern + "." + domain)       
 
 def add_tlds(domain):
     for tld in wordlist:
         queue.put(domain + "." + tld)
-
+        
 def get_args():
     global args
     
@@ -387,6 +408,7 @@ def get_args():
     parser.add_argument('-v', '--verbose', action="store_true", help='Подробный режим', dest='verbose')
     parser.add_argument('-n', '--nocheck', action="store_true", help='Не проверять серверы имен перед сканированием', dest='nocheck')
     parser.add_argument('-q', '--quick', action="store_true", help='Только выполнять передачу зоны и сканирование поддоменов с минимальным выводом в файл', dest='quick')
+    parser.add_argument('-b', '--bruteforce', help='Длина генерируемого поддомена в формате 6 или 3-8', dest='bruteforce', required=False)
     
     args = parser.parse_args()
 
@@ -451,6 +473,7 @@ if __name__ == "__main__":
     out = output()
     get_args()
     setup()
+    stop_event = threading.Event()  # Создаем событие для остановки потоков
     if args.nocheck == False:
         try:
             resolver.resolve('.', 'NS')
@@ -541,7 +564,7 @@ if __name__ == "__main__":
             add_target(target)
 
         for i in range(args.threads):
-            t = scanner(queue)
+            t = scanner(queue, stop_event)
             t.daemon = True
             t.start()
         try:
@@ -549,6 +572,7 @@ if __name__ == "__main__":
                 t.join(1024)       # Timeout needed or threads ignore exceptions
         except KeyboardInterrupt:
             out.fatal("Поймал прерывание с клавиатуры, завершаю работу...")
+            stop_event.set()  # Устанавливаем флаг остановки
             if outfile:
                 outfile.close()
             sys.exit(1)
