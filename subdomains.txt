@@ -779,3 +779,5 @@ xml
 zabbix
 zeus
 zimbra
+bitrix
+bitrix24
