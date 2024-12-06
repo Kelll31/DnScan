@@ -11,6 +11,9 @@ import threading
 import time
 import itertools
 import string
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 try:    # Уродливый взлом, потому что Python3 решил переименовать Queue в queue очередь
     import Queue
@@ -47,6 +50,17 @@ try:
 except:
     print("ОШИБКА: Отсутствует модуль dnspython (python-dnspython)")
     sys.exit(1)
+
+def setup_resolver(resolver_list=None, resolvers=None):
+    resolver = dns.resolver.Resolver()
+    resolver.timeout = 1
+    resolver.lifetime = 1
+    if resolver_list:
+        with open(resolver_list, 'r') as f:
+            resolver.nameservers = f.read().splitlines()
+    elif resolvers:
+        resolver.nameservers = resolvers.split(",")
+    return resolver
 
 if (packaging.version.parse(dns.__version__) < packaging.version.Version("2.0.0")):
     print("для работы с SubScanPy требуется dnspython версии 2.0.0 или выше.\ Вы можете установить его с помощью `pip install -r requirements.txt`")
@@ -440,7 +454,7 @@ def setup():
     except:
         out.fatal("Не могу открыть словарь " + args.wordlist)
         sys.exit(1)
-    # Number of threads should be between 1 and 32
+    # Количество тредов должно быть между 1 и 32
     if args.threads < 1:
         args.threads = 1
     elif args.threads > 32:
@@ -473,6 +487,7 @@ if __name__ == "__main__":
     out = output()
     get_args()
     setup()
+    resolver = setup_resolver(args.resolver_list, args.resolvers)
     stop_event = threading.Event()  # Создаем событие для остановки потоков
     if args.nocheck == False:
         try:
@@ -569,7 +584,7 @@ if __name__ == "__main__":
             t.start()
         try:
             for i in range(args.threads):
-                t.join(1024)       # Timeout needed or threads ignore exceptions
+                t.join(1024)       # Таймаут
         except KeyboardInterrupt:
             out.fatal("Поймал прерывание с клавиатуры, завершаю работу...")
             stop_event.set()  # Устанавливаем флаг остановки
