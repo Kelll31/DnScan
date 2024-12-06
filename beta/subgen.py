@@ -84,6 +84,6 @@ existing_subdomains = set(subdomains)
 
 # Генерация и сохранение новых поддоменов с отображением прогресса
 new_subdomains = [generate_subdomain('a', existing_subdomains) for _ in tqdm(range(10), desc="Генерация поддоменов")]
-with open('subdomains-extended.txt', 'w') as file:
+with open('subdomains-new.txt', 'w') as file:
     for subdomain in new_subdomains:
         file.write(subdomain + '\n')
